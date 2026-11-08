@@ -1,0 +1,8 @@
+Root: campus
+Total size: 3568 bytes
+Search: suffix=.png, minimum=1000
+  assets/logo.png
+Matches: 1
+Files: 6
+Directories: 6
+Maximum depth: 3
