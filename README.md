@@ -58,8 +58,6 @@ Maximum depth: 3
 ```
 
 С `.png 1000` единственное совпадение: `assets/logo.png`; размер и статистика не меняются.
-Фактические выводы CLI сохранены в [docs/demo-output.txt](docs/demo-output.txt)
-и [docs/demo-png-output.txt](docs/demo-png-output.txt).
 
 ## Устройство и double dispatch
 
@@ -150,14 +148,6 @@ Sealed-иерархия фиксирует допустимые типы узл�
 ## Материалы
 
 - [PDF-отчёт](docs/report.pdf): 3 страницы содержания и отдельная страница UML.
-- [UML, Mermaid](docs/uml.mmd).
-- [Подготовка к защите](docs/DEFENSE.md).
-- [Запись проверок](docs/VERIFICATION.md).
-
-PDF можно пересоздать после `mvn test`: установить Python-пакет `reportlab`, затем
-выполнить `python scripts/build_report.py`. Для шрифтов используются Arial в Windows
-или DejaVu Sans в Linux; на другой системе доступен аргумент `--font-dir`.
-Python нужен только для пересоздания отчёта, приложение и тесты работают через Maven.
 
 ## Источники и помощь
 

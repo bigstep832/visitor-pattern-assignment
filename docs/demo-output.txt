@@ -1,9 +1,0 @@
-Root: campus
-Total size: 3568 bytes
-Search: suffix=.txt, minimum=300
-  docs/architecture.txt
-  docs/archive/old-notes.txt
-Matches: 2
-Files: 6
-Directories: 6
-Maximum depth: 3
