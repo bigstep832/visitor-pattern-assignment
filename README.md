@@ -1,14 +1,14 @@
 # Assignment 06: Visitor Pattern
 
-Файловая система в памяти на Java 17. Три независимые операции над одним деревом:
-общий размер, поиск файлов и статистика. Данные демонстрации и тестов синтетические.
+An in-memory file system implemented in Java 17. Three independent operations run on
+the same tree: total size calculation, file search, and statistics. All demo and test data is synthetic.
 
-Репозиторий: https://github.com/bigstep832/visitor-pattern-assignment
+Repository: https://github.com/bigstep832/visitor-pattern-assignment
 
-## Запуск
+## Running the Project
 
-Нужны JDK 17 и Maven 3.9+. Команды выполняются из каталога с `pom.xml`.
-При первой сборке Maven скачивает зависимости из Maven Central; IntelliJ не требуется.
+JDK 17 and Maven 3.9+ are required. Run the commands from the directory containing `pom.xml`.
+Maven downloads dependencies from Maven Central during the first build. IntelliJ is not required.
 
 ```sh
 mvn test
@@ -17,16 +17,16 @@ java -jar target/visitor-pattern-1.0.0.jar
 java -jar target/visitor-pattern-1.0.0.jar .png 1000
 ```
 
-Аргументы приложения: суффикс имени и минимальный размер в байтах.
-Значения по умолчанию: `.txt` и `300`. Сравнение имени чувствительно к регистру.
-API `SearchVisitor` принимает любой `Predicate<String>` для имени файла, а не пути.
-Порог включительный: `size >= minimumSize`. Отрицательный порог отвергается.
+The application arguments are a filename suffix and a minimum size in bytes.
+The defaults are `.txt` and `300`. Filename matching is case-sensitive.
+The `SearchVisitor` API accepts any `Predicate<String>` applied to the filename, not the path.
+The threshold is inclusive: `size >= minimumSize`. Negative thresholds are rejected.
 
-На машине разработки Maven находится в комплекте IntelliJ, но запускается как CLI.
-Если `mvn` не найден, добавьте каталог `bin` установленного Maven в `PATH`.
-Для локальной воспроизводимости использовались Maven 3.9.11 и Microsoft OpenJDK 17.0.20.1.
+On the development machine, Maven is bundled with IntelliJ but runs from the command line.
+If `mvn` is not found, add the `bin` directory of your Maven installation to `PATH`.
+The project was verified locally with Maven 3.9.11 and Microsoft OpenJDK 17.0.20.1.
 
-## Собственное демонстрационное дерево
+## Custom Demo Tree
 
 ```text
 campus/
@@ -43,7 +43,7 @@ campus/
   scratch/
 ```
 
-Вывод запуска без аргументов:
+Output when run without arguments:
 
 ```text
 Root: campus
@@ -57,103 +57,103 @@ Directories: 6
 Maximum depth: 3
 ```
 
-С `.png 1000` единственное совпадение: `assets/logo.png`; размер и статистика не меняются.
+With `.png 1000`, the only match is `assets/logo.png`; the total size and statistics remain unchanged.
 
-## Устройство и double dispatch
+## Design and Double Dispatch
 
-- `Element` задаёт `name()` и `accept(Visitor)`.
-- `Node` хранит имя и внутреннего родителя; `FileNode` хранит неотрицательный `long size`.
-- `DirectoryNode.add(Node)` сохраняет инварианты, `children()` возвращает неизменяемый snapshot.
-- `Visitor` с самого начала содержит `visit(FileNode)` и `visit(DirectoryNode)`.
-- `TreeVisitor<R>` реализует единый жизненный цикл и обход для всех операций.
-- `TotalSizeVisitor`, `SearchVisitor`, `StatisticsVisitor` содержат только логику своих результатов.
+- `Element` declares `name()` and `accept(Visitor)`.
+- `Node` stores the name and an internal parent reference; `FileNode` stores a nonnegative `long size`.
+- `DirectoryNode.add(Node)` preserves tree invariants; `children()` returns an immutable snapshot.
+- `Visitor` declares both `visit(FileNode)` and `visit(DirectoryNode)` from the start.
+- `TreeVisitor<R>` provides a shared lifecycle and traversal for all operations.
+- `TotalSizeVisitor`, `SearchVisitor`, and `StatisticsVisitor` contain only the logic for their respective results.
 
-При `element.accept(visitor)` динамический тип элемента выбирает его `accept`.
-Внутри `FileNode.accept` выражение `this` имеет тип `FileNode`, поэтому компилятор
-выбирает перегрузку `visit(FileNode)`. Вызов выполняется на объекте посетителя;
-в этой реализации общий обработчик `TreeVisitor` вызывает переопределённый `onFile`.
-Для каталога аналогично выбирается `visit(DirectoryNode)`. Проверки типов,
-reflection и приведения для выбора поведения не используются.
+In `element.accept(visitor)`, the element's runtime type determines which `accept` method runs.
+Inside `FileNode.accept`, `this` has the compile-time type `FileNode`, so the compiler
+selects the `visit(FileNode)` overload. The call is made on the visitor object;
+in this implementation, the shared `TreeVisitor` handler calls the overridden `onFile` method.
+For a directory, `visit(DirectoryNode)` is selected in the same way. Type checks,
+reflection, and casts are not used to select behavior.
 
-## Владелец обхода и состояние
+## Traversal Ownership and State
 
-Обходом владеют посетители через общий `TreeVisitor`; элементы только выполняют dispatch.
-`evaluate(root)` сбрасывает результат, помещает корень в явный стек и обрабатывает
-каждый достижимый узел один раз. Обработчик каталога добавляет его детей в стек
-в обратном порядке, сохраняя прямой порядок вставки при DFS. Рекурсии нет.
+Visitors own the traversal through the shared `TreeVisitor`; elements only dispatch calls.
+`evaluate(root)` resets the result, pushes the root onto an explicit stack, and processes
+each reachable node once. The directory handler pushes its children onto the stack
+in reverse order, preserving insertion order during depth-first traversal. No recursion is used.
 
-Все операции запускаются через `visitor.evaluate(root)`. Прямой `accept` с обычным
-пользовательским `Visitor` допустим; прямой вызов с `TreeVisitor` вне `evaluate`
-отвергается, поскольку ещё нет контекста пути и глубины.
+All operations start through `visitor.evaluate(root)`. Calling `accept` directly with a
+custom `Visitor` is allowed. A direct call with a `TreeVisitor` outside `evaluate`
+is rejected because no path or depth context has been established.
 
-Экземпляры посетителей повторно используются **последовательно**. Состояние
-обхода очищается в `finally`, даже при исключении пользовательского predicate;
-следующий запуск снова вызывает `reset`. Результаты поиска и статистики неизменяемы.
-Вложенный `evaluate` того же посетителя отвергается. Потокобезопасность не заявляется;
-дерево нельзя менять во время обхода. Predicate должен быть без побочных эффектов:
-не менять дерево и не вызывать `accept`, `visit` или `evaluate` посетителей.
+Visitor instances can be reused **sequentially**. Traversal state is cleared in
+`finally`, even if a user-supplied predicate throws an exception; the next evaluation
+calls `reset` again. Search and statistics results are immutable.
+A nested `evaluate` call on the same visitor is rejected. Thread safety is not guaranteed,
+and the tree must not be modified during traversal. Predicates must have no side effects:
+they must not modify the tree or invoke visitor dispatch or evaluation through `accept`, `visit`, or `evaluate`.
 
-Путь выбранного корня - `.`; имя корневого каталога в пути потомков не включается.
-Если выбран один файл, его собственный относительный путь - `.`.
-Для подкаталога отсчёт начинается заново. Разделитель всегда `/`, результаты
-поиска сортируются естественным лексикографическим порядком Java (`String.compareTo`).
-Глубина корня равна 0, ребёнка - глубина родителя + 1. Пустые каталоги тоже учитываются.
+The selected root's path is `.`; the root directory's name is excluded from descendant paths.
+If a single file is selected as the root, its relative path is also `.`.
+Selecting a subdirectory starts a new relative path and depth context. The separator is always `/`.
+Search results use Java's natural lexicographic ordering (`String.compareTo`).
+The root has depth 0; each child's depth is its parent's depth + 1. Empty directories are counted too.
 
-## Инварианты и ограничения
+## Invariants and Limitations
 
-Публичный API запрещает отрицательный размер, повтор имени среди соседей
-(включая пару файл/каталог), второго родителя, добавление себя или своего предка.
-Перед изменением дерева проверяются все условия. Имя не может быть пустым,
-пробельным, `.`, `..`, содержать `/`, `\` или управляющие символы.
-Имена чувствительны к регистру; одинаковые имена в разных каталогах разрешены.
-Имена и размеры неизменяемы; операции удаления и переноса не входят в этот API.
+The public API rejects negative sizes, duplicate sibling names (including a file
+and a directory with the same name), a second parent, and adding a directory to itself
+or adding one of its ancestors as a child. All conditions are checked before the tree is changed.
+A name cannot be empty, whitespace-only, `.`, or `..`, and cannot contain `/`, `\`, or control characters.
+Names are case-sensitive; identical names in different directories are allowed.
+Names and sizes are immutable. Removal and move operations are outside this API's scope.
 
-Некорректные значения и изменения вызывают `IllegalArgumentException`, `null` -
-`NullPointerException`, неверный жизненный цикл - `IllegalStateException`.
-Переполнение суммы `long` вызывает `ArithmeticException`, а не отрицательный итог.
-Глубина ограничена `int` и доступной памятью; переполнение глубины также проверяется.
-Sealed-иерархия фиксирует допустимые типы узлов и не позволяет обойти инварианты
-подменной реализацией `Element` из стороннего кода.
+Invalid values and mutations throw `IllegalArgumentException`; `null` arguments throw
+`NullPointerException`; invalid lifecycle usage throws `IllegalStateException`.
+Overflow when summing `long` values throws `ArithmeticException` instead of producing a negative total.
+Depth is limited by the `int` range and available memory; depth overflow is also checked.
+The sealed hierarchy fixes the permitted node types and prevents external implementations
+of `Element` from bypassing the invariants.
 
-## Расширение
+## Extending the Design
 
-Третий посетитель добавлен отдельным commit `feat: add statistics visitor without changing element contracts`:
-добавлены только `Statistics`, `StatisticsVisitor` и его тесты. `FileNode`,
-`DirectoryNode`, `Visitor`, `accept` и общий обход при этом не менялись.
-Новая операция добавляется наследником `TreeVisitor<R>`.
+The third visitor was added in a separate commit, `feat: add statistics visitor without changing element contracts`.
+Only `Statistics`, `StatisticsVisitor`, and its tests were added. `FileNode`,
+`DirectoryNode`, `Visitor`, `accept`, and the shared traversal remained unchanged.
+A new operation can be added by extending `TreeVisitor<R>`.
 
-Новый **тип элемента** дороже: нужно изменить sealed `permits`, добавить перегрузку
-в `Visitor`, определить обход нового типа в `TreeVisitor` и его смысл для операций.
-Это компромисс Visitor: удобно расширять операции при стабильной структуре элементов.
-Обход выполняет O(n) посещений; поиск дополнительно сортирует k совпадений за O(k log k).
-Создание строк путей зависит от их длины; память используется под стек и результаты.
+Adding a new **element type** requires more changes: update the sealed `permits` declarations,
+add an overload to `Visitor`, and define traversal and operation behavior for the new type.
+This is the Visitor trade-off: adding operations is convenient when element types remain stable.
+Traversal performs O(n) visits; search also sorts k matches in O(k log k) time.
+The cost of constructing path strings depends on their lengths; memory is used for the stack and results.
 
-## Проверки
+## Verification
 
-Фактически выполнено: **25 тестов, 0 failures, 0 errors, 0 skipped** на Java 17.
-`mvn package` собирает исполняемый JAR; оба варианта CLI запущены.
+Verified on Java 17: **25 tests, 0 failures, 0 errors, 0 skipped**.
+`mvn package` produces an executable JAR; both CLI configurations shown above were run successfully.
 
-| Класс | Тестов | Требования |
+| Class | Tests | Requirements |
 | --- | ---: | --- |
-| `DispatchTest` | 1 | T1: правильные перегрузки, отсутствие обхода в элементах |
-| `TotalSizeVisitorTest` | 4 | T2, T6, T7: сумма, повтор, пустой корень, переполнение |
-| `SearchVisitorTest` | 7 | T3, T4, T6, T7: фильтры, пути, сортировка, сброс и исключения |
-| `StatisticsVisitorTest` | 5 | T5, T6, T7: подсчёт, глубина, новый корень, 2000 уровней |
-| `TreeIntegrityTest` | 6 | T8: недопустимые изменения, snapshot, имена и размеры |
-| `DemoTest` | 2 | Вывод демо и изменение конфигурации |
+| `DispatchTest` | 1 | T1: correct overloads, no traversal inside elements |
+| `TotalSizeVisitorTest` | 4 | T2, T6, T7: total size, repeated evaluation, empty root, overflow |
+| `SearchVisitorTest` | 7 | T3, T4, T6, T7: filters, paths, sorting, reset, and exceptions |
+| `StatisticsVisitorTest` | 5 | T5, T6, T7: counts, depth, a new root, 2000 levels |
+| `TreeIntegrityTest` | 6 | T8: invalid mutations, snapshots, names, and sizes |
+| `DemoTest` | 2 | Demo output and configuration changes |
 
-Ожидаемые значения тестов заданы вручную и не вычисляются через проверяемые посетители.
-Тестовые деревья отличаются от демонстрационного.
+Expected test values are specified manually, not calculated using the visitors under test.
+The test trees differ from the demo tree.
 
-## Материалы
+## Materials
 
-- [PDF-отчёт](docs/report.pdf): 3 страницы на английском, включая альбомную страницу с UML.
+- [PDF report](docs/report.pdf): 3 pages in English, including a landscape page with the UML diagram.
 
-## Источники и помощь
+## Sources and Assistance
 
-Требования взяты из предоставленного `Assignment_6_Visitor_Pattern.pdf` (AITU, Assignment 06).
-Справочные источники: [Java SE 17, JLS 15.12](https://docs.oracle.com/javase/specs/jls/se17/html/jls-15.html#jls-15.12)
-и [JUnit 5.10.2 User Guide](https://docs.junit.org/5.10.2/user-guide/).
-Код, тесты и отчёт подготовлены с помощью ChatGPT/Codex. Это не утверждение о
-самостоятельном авторстве студента; перед сдачей нужно учесть правила курса о
-допустимой помощи ИИ и уметь самостоятельно объяснить и изменить реализацию.
+The requirements come from the supplied `Assignment_6_Visitor_Pattern.pdf` (AITU, Assignment 06).
+References: [Java SE 17, JLS 15.12](https://docs.oracle.com/javase/specs/jls/se17/html/jls-15.html#jls-15.12)
+and the [JUnit 5.10.2 User Guide](https://docs.junit.org/5.10.2/user-guide/).
+The code, tests, and report were prepared with ChatGPT/Codex assistance. This is not a claim
+of independent student authorship. Before submission, follow the course's rules on permitted
+AI assistance and be prepared to explain and modify the implementation independently.
